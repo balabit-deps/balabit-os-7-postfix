@@ -1,0 +1,46 @@
+--- a/src/dns/Makefile.in
++++ b/src/dns/Makefile.in
+@@ -63,7 +63,7 @@
+ $(LIB):	$(OBJS)
+ 	$(AR) $(ARFL) $(LIB) $?
+ 	$(RANLIB) $(LIB)
+-	$(SHLIB_LD) $(SHLIB_RPATH) -o $(LIB) $(OBJS) $(SHLIB_SYSLIBS)
++	$(SHLIB_LD) $(SHLIB_RPATH) -o $(LIB) $(OBJS) $(SHLIB_SYSLIBS) -L../../lib -lpostfix-util -lpostfix-global
+ 
+ $(LIB_DIR)/$(LIB): $(LIB)
+ 	cp $(LIB) $(LIB_DIR)
+--- a/src/global/Makefile.in
++++ b/src/global/Makefile.in
+@@ -143,7 +143,7 @@
+ $(LIB):	$(OBJS)
+ 	$(AR) $(ARFL) $(LIB) $?
+ 	$(RANLIB) $(LIB)
+-	$(SHLIB_LD) $(SHLIB_RPATH) -o $(LIB) $(OBJS) $(SHLIB_SYSLIBS)
++	$(SHLIB_LD) $(SHLIB_RPATH) -o $(LIB) $(OBJS) $(SHLIB_SYSLIBS) -L../../lib -lpostfix-util
+ 
+ $(LIB_DIR)/$(LIB): $(LIB)
+ 	cp $(LIB) $(LIB_DIR)
+--- a/src/master/Makefile.in
++++ b/src/master/Makefile.in
+@@ -44,7 +44,8 @@
+ $(LIB):	$(LIB_OBJ)
+ 	$(AR) $(ARFL) $(LIB) $?
+ 	$(RANLIB) $(LIB)
+-	$(SHLIB_LD) $(SHLIB_RPATH) -o $(LIB) $(LIB_OBJ) $(SHLIB_SYSLIBS)
++	$(SHLIB_LD) $(SHLIB_RPATH) -o $(LIB) $(LIB_OBJ) $(SHLIB_SYSLIBS) \
++		-L../../lib -lpostfix-global -lpostfix-util
+ 
+ $(LIB_DIR)/$(LIB): $(LIB)
+ 	cp $(LIB) $(LIB_DIR)/$(LIB)
+--- a/src/tls/Makefile.in
++++ b/src/tls/Makefile.in
+@@ -44,7 +44,8 @@
+ $(LIB):	$(OBJS)
+ 	$(AR) $(ARFL) $(LIB) $?
+ 	$(RANLIB) $(LIB)
+-	$(SHLIB_LD) $(SHLIB_RPATH) -o $(LIB) $(OBJS) $(SHLIB_SYSLIBS)
++	$(SHLIB_LD) $(SHLIB_RPATH) -o $(LIB) $(OBJS) $(SHLIB_SYSLIBS) \
++		-L../../lib -lpostfix-dns -lpostfix-global -lpostfix-util
+ 
+ $(LIB_DIR)/$(LIB): $(LIB)
+ 	cp $(LIB) $(LIB_DIR)

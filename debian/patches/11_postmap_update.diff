@@ -1,0 +1,194 @@
+Index: postfix/html/postmap.1.html
+===================================================================
+--- postfix.orig/html/postmap.1.html	2018-02-23 02:40:16.124719550 -0500
++++ postfix/html/postmap.1.html	2018-02-23 02:40:16.112719550 -0500
+@@ -10,7 +10,7 @@
+        postmap - Postfix lookup table management
+ 
+ <b>SYNOPSIS</b>
+-       <b>postmap</b> [<b>-NbfhimnoprsuUvw</b>] [<b>-c</b> <i>config</i><b>_</b><i>dir</i>] [<b>-d</b> <i>key</i>] [<b>-q</b> <i>key</i>]
++       <b>postmap</b> [<b>-NAbfhimnoprsuUvw</b>] [<b>-c</b> <i>config</i><b>_</b><i>dir</i>] [<b>-d</b> <i>key</i>] [<b>-q</b> <i>key</i>]
+                [<i>file</i><b>_</b><i>type</i>:]<i>file</i><b>_</b><i>name</i> ...
+ 
+ <b>DESCRIPTION</b>
+@@ -76,6 +76,10 @@
+ 
+               This feature is available in Postfix version 2.6 and later.
+ 
++       <b>-A</b>     Upgrade the database to the current version.
++              This feature is available in Postfix version 3.0 and later,  and
++              is not available for all database types.  In 2.x, it is <b>-u</b>.
++
+        <b>-c</b> <i>config</i><b>_</b><i>dir</i>
+               Read  the  <a href="postconf.5.html"><b>main.cf</b></a>  configuration  file  in  the named directory
+               instead of the default configuration directory.
+Index: postfix/man/man1/postmap.1
+===================================================================
+--- postfix.orig/man/man1/postmap.1	2018-02-23 02:40:16.124719550 -0500
++++ postfix/man/man1/postmap.1	2018-02-23 02:40:16.116719550 -0500
+@@ -9,7 +9,7 @@
+ .na
+ .nf
+ .fi
+-\fBpostmap\fR [\fB\-NbfhimnoprsuUvw\fR] [\fB\-c \fIconfig_dir\fR]
++\fBpostmap\fR [\fB\-NAbfhimnoprsuUvw\fR] [\fB\-c \fIconfig_dir\fR]
+ [\fB\-d \fIkey\fR] [\fB\-q \fIkey\fR]
+         [\fIfile_type\fR:]\fIfile_name\fR ...
+ .SH DESCRIPTION
+@@ -129,6 +129,8 @@
+ syntax checks anyway.
+ .sp
+ This feature is available in Postfix version 2.6 and later.
++.IP \fB-A\fR
++Upgrade the database to the current version.
+ .IP \fB\-i\fR
+ Incremental mode. Read entries from standard input and do not
+ truncate an existing database. By default, \fBpostmap\fR(1) creates
+Index: postfix/src/postmap/postmap.c
+===================================================================
+--- postfix.orig/src/postmap/postmap.c	2018-02-23 02:40:16.124719550 -0500
++++ postfix/src/postmap/postmap.c	2018-02-23 02:40:16.116719550 -0500
+@@ -81,6 +81,8 @@
+ /*	syntax checks anyway.
+ /* .sp
+ /*	This feature is available in Postfix version 2.6 and later.
++/* .IP "\fB-A\fR"
++/*	Upgrade the database to the current version.
+ /* .IP "\fB-c \fIconfig_dir\fR"
+ /*	Read the \fBmain.cf\fR configuration file in the named directory
+ /*	instead of the default configuration directory.
+@@ -837,6 +839,21 @@
+     dict_close(dict);
+ }
+ 
++/* postmap_upgrade - upgrade a map */
++
++static int postmap_upgrade(const char *map_type, const char *map_name)
++{
++    DICT   *dict;
++
++    if (!map_type || !map_name) {
++    	msg_fatal("malformed mapname: Expected TYPE:PATH");
++    }
++    dict = dict_open3(map_type, map_name, O_RDWR,
++			DICT_FLAG_LOCK|DICT_FLAG_UPGRADE);
++    dict_close(dict);
++    return (dict != 0);
++}
++
+ /* usage - explain */
+ 
+ static NORETURN usage(char *myname)
+@@ -858,6 +875,7 @@
+     int     open_flags = O_RDWR | O_CREAT | O_TRUNC;
+     int     dict_flags = (DICT_FLAG_DUP_WARN | DICT_FLAG_FOLD_FIX
+ 			  | DICT_FLAG_UTF8_REQUEST);
++    int     upgrade = 0;
+     char   *query = 0;
+     char   *delkey = 0;
+     int     sequence = 0;
+@@ -909,7 +927,7 @@
+     /*
+      * Parse JCL.
+      */
+-    while ((ch = GETOPT(argc, argv, "Nbc:d:fhimnopq:rsuUvw")) > 0) {
++    while ((ch = GETOPT(argc, argv, "NAbc:d:fhimnopq:rsuUvw")) > 0) {
+ 	switch (ch) {
+ 	default:
+ 	    usage(argv[0]);
+@@ -918,6 +936,11 @@
+ 	    dict_flags |= DICT_FLAG_TRY1NULL;
+ 	    dict_flags &= ~DICT_FLAG_TRY0NULL;
+ 	    break;
++	case 'A':
++	    if (sequence || query || delkey || upgrade)
++		msg_fatal("specify only one of -s -q -u or -d");
++	    upgrade=1;
++	    break;
+ 	case 'b':
+ 	    postmap_flags |= POSTMAP_FLAG_BODY_KEY;
+ 	    break;
+@@ -926,8 +949,8 @@
+ 		msg_fatal("out of memory");
+ 	    break;
+ 	case 'd':
+-	    if (sequence || query || delkey)
+-		msg_fatal("specify only one of -s -q or -d");
++	    if (sequence || query || delkey || upgrade)
++		msg_fatal("specify only one of -A -s -q or -d");
+ 	    delkey = optarg;
+ 	    break;
+ 	case 'f':
+@@ -953,8 +976,8 @@
+ 	    postmap_flags &= ~POSTMAP_FLAG_SAVE_PERM;
+ 	    break;
+ 	case 'q':
+-	    if (sequence || query || delkey)
+-		msg_fatal("specify only one of -s -q or -d");
++	    if (sequence || query || delkey || upgrade)
++		msg_fatal("specify only one of -A -s -q or -d");
+ 	    query = optarg;
+ 	    break;
+ 	case 'r':
+@@ -962,8 +985,8 @@
+ 	    dict_flags |= DICT_FLAG_DUP_REPLACE;
+ 	    break;
+ 	case 's':
+-	    if (query || delkey)
+-		msg_fatal("specify only one of -s or -q or -d");
++	    if (query || delkey || upgrade)
++		msg_fatal("specify only one of -A -s -q or -d");
+ 	    sequence = 1;
+ 	    break;
+ 	case 'u':
+@@ -1053,6 +1076,21 @@
+ 	    exit(0);
+ 	}
+ 	exit(1);
++    } else if (upgrade) {			/* Upgrade the map(s) */
++	int success = 1;
++	if (optind + 1 > argc)
++	    usage(argv[0]);
++	while (optind < argc) {
++	    if ((path_name = split_at(argv[optind], ':')) != 0) {
++		success &= postmap_upgrade(argv[optind], path_name);
++	    } else {
++		success &= postmap_upgrade(var_db_type, path_name);
++	    }
++	    if (!success)
++		exit(1);
++	    optind++;
++	}
++	exit(0);
+     } else {					/* create/update map(s) */
+ 	if (optind + 1 > argc)
+ 	    usage(argv[0]);
+Index: postfix/src/util/dict.h
+===================================================================
+--- postfix.orig/src/util/dict.h	2018-02-23 02:40:16.124719550 -0500
++++ postfix/src/util/dict.h	2018-02-23 02:40:16.120719550 -0500
+@@ -123,6 +123,7 @@
+ #define DICT_FLAG_NO_UNAUTH	(1<<13)	/* disallow unauthenticated data */
+ #define DICT_FLAG_FOLD_FIX	(1<<14)	/* case-fold key with fixed-case map */
+ #define DICT_FLAG_FOLD_MUL	(1<<15)	/* case-fold key with multi-case map */
++#define DICT_FLAG_UPGRADE	(1<<30) /* Upgrade the db */
+ #define DICT_FLAG_FOLD_ANY	(DICT_FLAG_FOLD_FIX | DICT_FLAG_FOLD_MUL)
+ #define DICT_FLAG_OPEN_LOCK	(1<<16)	/* perm lock if not multi-writer safe */
+ #define DICT_FLAG_BULK_UPDATE	(1<<17)	/* optimize for bulk updates */
+Index: postfix/src/util/dict_db.c
+===================================================================
+--- postfix.orig/src/util/dict_db.c	2018-02-23 02:40:16.124719550 -0500
++++ postfix/src/util/dict_db.c	2018-02-23 02:40:16.120719550 -0500
+@@ -743,6 +743,12 @@
+     if (type == DB_HASH && db->set_h_nelem(db, DICT_DB_NELM) != 0)
+ 	msg_fatal("set DB hash element count %d: %m", DICT_DB_NELM);
+     db_base_buf = vstring_alloc(100);
++    if (dict_flags & DICT_FLAG_UPGRADE) {
++       if (msg_verbose)
++	  msg_info("upgrading database %s",db_path);
++       if ((errno = db->upgrade(db,db_path,0)) != 0)
++	  msg_fatal("upgrade of database %s: %m",db_path);
++    }
+ #if DB_VERSION_MAJOR == 6 || DB_VERSION_MAJOR == 5 || \
+ 	(DB_VERSION_MAJOR == 4 && DB_VERSION_MINOR > 0)
+     if ((errno = db->open(db, 0, sane_basename(db_base_buf, db_path),

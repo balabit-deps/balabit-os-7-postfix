@@ -1,0 +1,26 @@
+Subject: add immediate binding and relro when enabling position independent
+  executables
+Author: Steve Beattie <steve.beattie@canonical.com>
+
+When enabling position independent executables (-pie) to get better
+Address Space Layout Protection, using immediate binding (linking with
+"-z now") gives better protection as well.  Added relro to the patch as well
+since it seems to have gotten lost somewhere (ScottK/2016-07-29).
+
+---
+ makedefs |    2 +-
+ 1 file changed, 1 insertion(+), 1 deletion(-)
+
+Index: postfix/makedefs
+===================================================================
+--- postfix.orig/makedefs	2018-02-23 02:40:29.952720107 -0500
++++ postfix/makedefs	2018-02-23 02:40:29.948720107 -0500
+@@ -1200,7 +1200,7 @@
+        case " $CCARGS " in
+          *" $CCARGS_PIE "*) CCARGS_PIE=;;
+        esac
+-       SYSLIBS_PIE="-pie";;
++       SYSLIBS_PIE="-pie -z relro -z now";;
+ ""|no) ;;
+     *) error "Specify \"pie=yes\" or \"pie=no\"";;
+ esac
