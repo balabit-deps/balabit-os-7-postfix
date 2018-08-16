@@ -1,3 +1,11 @@
+postfix (3.3.0-1ubuntu0.1) bionic; urgency=medium
+
+  * debian/patches/fix-postconf-segfault.diff: Fix a postconf segfault
+    when map file cannot be read.  Thanks to Viktor Dukhovni <postfix-
+    users@dukhovni.org>. (LP: #1753470)
+
+ -- Karl Stenerud <karl.stenerud@canonical.com>  Thu, 16 Aug 2018 11:33:00 -0700
+
 postfix (3.3.0-1) unstable; urgency=medium
 
   [Wietse Venema]
