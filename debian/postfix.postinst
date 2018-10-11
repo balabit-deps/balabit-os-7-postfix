@@ -614,8 +614,7 @@ if [ ! -f /etc/postfix/master.cf.proto ]; then
 fi
 
 if [ "$mailer" != "No configuration" ] || [ -f /etc/postfix/main.cf ]; then
-    aliastype=$(postconf |grep alias_database | awk '{print $3}' | \
-        awk -F \: '{print $1}')
+    aliastype=$(postconf -h alias_database | cut -f1 -d:)
     if ( [ "$aliastype" != "ldap" ] && [ "$aliastype" != "lmdb" ] && \
         [ "$aliastype" != "cdb" ] && [ "$aliastype" != "pcre" ] && \
         [ "$aliastype" != "mysql" ] && [ "$aliastype" != "pgsql" ] && \

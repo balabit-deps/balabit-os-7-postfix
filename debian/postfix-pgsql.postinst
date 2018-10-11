@@ -30,8 +30,7 @@ set -e
 case "$1" in
     configure)
 	addmap pgsql
-       if [ $(postconf |grep alias_database | awk '{print $3}'|awk -F \: \
-           '{print $1}') = 'pgsql' ]; then
+       if [ "$(postconf -h alias_database | cut -f1 -d:)" = "pgsql" ]; then
            runnewaliases
        fi
     ;;

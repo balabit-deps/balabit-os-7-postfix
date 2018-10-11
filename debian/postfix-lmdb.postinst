@@ -31,8 +31,7 @@ set -e
 case "$1" in
     configure)
        addmap lmdb mkmap_lmdb_open
-       if [ $(postconf |grep alias_database | awk '{print $3}'|awk -F \: \
-           '{print $1}') = 'lmdb' ]; then
+       if [ "$(postconf -h alias_database | cut -f1 -d:)" = "lmdb" ]; then
            runnewaliases
        fi
     ;;
