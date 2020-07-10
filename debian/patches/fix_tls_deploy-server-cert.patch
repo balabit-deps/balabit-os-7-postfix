@@ -1,0 +1,19 @@
+Description: Fix "postfix tls deploy-server-cert"
+ It did not handle a missing optional argument.
+Author: Viktor Dukhovni
+Origin: upstream, https://github.com/vdukhovni/postfix/commit/119d6abed969b1b30c62722ae31c854b5682beae#diff-1843f98f5710e97bd063d5807334442a
+Ubuntu-Bug: LP#1881196
+Reviewed-By: Lucas Kanashiro <kanashiro@ubuntu.com>
+Last-Updated: 2020-07-10
+
+--- a/conf/postfix-tls-script
++++ b/conf/postfix-tls-script
+@@ -777,7 +777,7 @@
+ deploy_server_cert() {
+     certfile=$1; shift
+     keyfile=$1; shift
+-    deploy=$1; shift
++    case $# in 0) deploy=;; *) deploy=$1; shift;; esac
+ 
+     # Sets key_algo, key_param and cert_param
+     check_key "$keyfile" || return 1

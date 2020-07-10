@@ -16,3 +16,4 @@
 70_postfix-check.diff
 tls_version.diff
 fix-postconf-segfault.diff
+fix_tls_deploy-server-cert.patch
